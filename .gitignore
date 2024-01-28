@@ -1,0 +1,24 @@
+# Weights, results, etc
+*.pth
+*.pt
+*.lock
+*.log
+*.h5
+*.tsv
+*.csv
+*.png
+results/
+
+# Scratch file
+scratch.py
+scratch.txt
+scratch.ipynb
+
+# Python stuff
+*.pkl
+*.py[co]
+*.pstats
+__pycache__/
+.vscode/
+venv/
+.ipynb_checkpoints/
