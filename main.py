@@ -1,29 +1,69 @@
 import chess
-import numpy as np
+import random
 
 from action import action_to_move
 from mcts import MCTSNode, mcts_choose_move, expand_node
+from agent import MCTSAgent, RandomChessAgent
+
+import sys
 
 MATE_IN_ONE = '1k6/6R1/1K6/8/8/8/8/8 w - - 2 2'
 MATE_IN_TWO = 'k7/6R1/2K5/8/8/8/8/8 w - - 0 1'
 
-board = chess.Board(MATE_IN_TWO)
 
-root_node = MCTSNode()
-_value = expand_node(root_node, board)
+def main():
+    total_wins = 0
+    total_draws = 0
+    total_losses = 0
+    for i in range(100):
+        print(f"Game {i}", end="\t")
+        sys.stdout.flush()
+        moves_played, mcts_win, draw, mcts_lose = play_agent_vs_agent()
+        total_wins += mcts_win
+        total_draws += draw
+        total_losses += mcts_lose
+        print(f"Moves {moves_played:3d} | MCTS Win / Draw / Lose:"
+              f" {mcts_win:2d} {draw:2d} {mcts_lose:2d} | Total"
+              f" {total_wins:3d} / {total_draws:3d} / {total_losses:3d}")
+        sys.stdout.flush()
 
-print(board)
-print(board.fen())
+    print(f"Total MCTS win / draw / lose "
+          f"{total_wins:2d} / {total_draws:2d} / {total_losses:2d}")
 
-move, new_probs, new_eval = mcts_choose_move(root_node, board)
 
-print(f"Chosen Move: {move}")
-print(f"New eval:    {new_eval}")
-print(f"New probs: sum: {new_probs.sum()}\n{new_probs.reshape((64, 64))}")
+def play_agent_vs_agent():
+    agent = MCTSAgent()
+    other = RandomChessAgent()
 
-top_actions = np.argsort(new_probs)[-20:][::-1]
-for action in top_actions:
-    print(action_to_move(action, board), new_probs[action])
+    moves_played = 0
+    board = chess.Board()
+    r = random.randint(0, 1)  # which out of [agent, other] goes first
+    white = [agent, other][r]
+    black = [agent, other][1-r]
+
+    while not board.is_game_over():
+        current_agent = white if moves_played % 2 == 0 else black
+        # print(f"white {white} black {black}")
+        # print(f"{current_agent}'s move")
+        move = current_agent.choose_move()
+        tab = '\t...' if moves_played % 2 else ' '
+        # print(f"{moves_played:3d}.{tab}{move}")
+        board.push(move)
+        # print(board)
+        agent.update_position(move)
+        other.update_position(move)
+        moves_played += 1
+
+    # When game is terminated
+    if board.is_checkmate():
+        who_won = white if board.turn == chess.BLACK else black
+        if who_won == agent:
+            return (moves_played, 1, 0, 0)
+        else:
+            return (moves_played, 0, 0, 1)
+
+    # The game ended in draw
+    return (moves_played, 0, 1, 0)
 
 
 def recursively_print_node(node: MCTSNode, prefix=""):
@@ -42,3 +82,5 @@ def recursively_print_node(node: MCTSNode, prefix=""):
 
 
 # recursively_print_node(root_node)
+if __name__ == "__main__":
+    main()

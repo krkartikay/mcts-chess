@@ -9,7 +9,7 @@ from action import move_to_action, action_to_move
 
 NUM_ACTIONS = 64 * 64
 
-N_SIM = 2000
+N_SIM = 100
 C_PUCT = 1
 
 
@@ -132,7 +132,7 @@ def simulate(root_node: MCTSNode, board: chess.Board) -> None:
     # might be slow.
 
     # check current board state for termination
-    if board.is_game_over(claim_draw=True):
+    if board.is_game_over() or board.can_claim_fifty_moves():
         value = expand_terminal_node(current_node, board)
     else:
         # Create a new node and assign the policy to it
