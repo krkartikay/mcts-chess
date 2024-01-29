@@ -12,6 +12,7 @@ NUM_ACTIONS = 64 * 64
 N_SIM = 100
 C_PUCT = 1
 
+SAMPLING_TEMPERATURE = 4
 
 class MCTSNode:
     """
@@ -87,6 +88,7 @@ def mcts_choose_move(root_node: MCTSNode, board: chess.Board) -> Tuple[chess.Mov
     # (todo: add temperature parameter, and reduce temperature to 0 towards the
     # end of the game.)
     root_probs = root_node.n.copy()
+    root_probs **= SAMPLING_TEMPERATURE
     root_probs /= root_probs.sum()
     action = np.random.choice(np.arange(0, NUM_ACTIONS), p=root_probs)
     move = action_to_move(action, board)
