@@ -9,7 +9,7 @@ from action import move_to_action, action_to_move
 
 NUM_ACTIONS = 64 * 64
 
-N_SIM = 10
+N_SIM = 100
 C_PUCT = 1
 
 
@@ -86,7 +86,7 @@ def mcts_choose_move(root_node: MCTSNode, board: chess.Board) -> Tuple[chess.Mov
     root_probs /= root_probs.sum()
     action = np.random.choice(np.arange(0, NUM_ACTIONS), p=root_probs)
     move = action_to_move(action, board)
-    root_eval = root_node.q.mean()
+    root_eval = root_node.w.sum() / root_node.n.sum()
 
     # (make sure we didn't accidentally modify the board)
     assert board.fen() == saved_start_fen

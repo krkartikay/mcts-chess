@@ -4,13 +4,16 @@ import numpy as np
 from action import action_to_move
 from mcts import MCTSNode, mcts_choose_move, expand_node
 
-board = chess.Board()
+board = chess.Board(
+    '8/k1K5/8/8/8/8/8/7Q w - - 0 1'
+)
 
 root_node = MCTSNode()
 policy, value = expand_node(root_node, board)
 root_node.p = policy
 
 print(board)
+print(board.fen())
 
 move, new_probs, new_eval = mcts_choose_move(root_node, board)
 
@@ -18,6 +21,9 @@ print(f"Chosen Move: {move}")
 print(f"New eval:    {new_eval}")
 print(f"New probs: sum: {new_probs.sum()}\n{new_probs.reshape((64, 64))}")
 
+top_actions = np.argsort(new_probs)[-20:][::-1]
+for action in top_actions:
+    print(action_to_move(action, board), new_probs[action])
 
 def recursively_print_node(node: MCTSNode, prefix=""):
     print(f"{prefix}Node")
