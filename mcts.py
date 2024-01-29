@@ -9,7 +9,7 @@ from action import move_to_action, action_to_move
 
 NUM_ACTIONS = 64 * 64
 
-N_SIM = 100
+N_SIM = 2000
 C_PUCT = 1
 
 
@@ -24,6 +24,8 @@ class MCTSNode:
         self.w: np.ndarray = np.zeros(NUM_ACTIONS)  # sum of q values
         self.n: np.ndarray = np.zeros(NUM_ACTIONS)  # number of visits
         self.p: np.ndarray = np.zeros(NUM_ACTIONS)  # prior probabilities
+        # mask for legal moves (will be reused every time we go thru this node)
+        self.legal_mask = np.ndarray = np.zeros(NUM_ACTIONS)
         # one node for every expanded action
         self.next_states: Dict[int, MCTSNode] = {}
 
@@ -76,7 +78,9 @@ def mcts_choose_move(root_node: MCTSNode, board: chess.Board) -> Tuple[chess.Mov
 
     # 2. Run N_sim simulations
     for i in range(N_SIM):
+        # print(f"Simulation {i}", end=" ")
         simulate(root_node, board)
+        # print()
 
     # 3. Sample chosen move and report new probs and eval.
     # Sample move from root probabilities proportional to visit counts.
@@ -111,6 +115,7 @@ def simulate(root_node: MCTSNode, board: chess.Board) -> None:
         # select node to expand
         action = select_action(current_node)
         move = action_to_move(action, board)
+        # print(f"{move}", end=" ")
         board.push(move)
         path.append((current_node, action))
         if action in current_node.next_states:
@@ -130,13 +135,11 @@ def simulate(root_node: MCTSNode, board: chess.Board) -> None:
     if board.is_game_over(claim_draw=True):
         value = expand_terminal_node(current_node, board)
     else:
-        policy, value = expand_node(current_node, board)
-
         # Create a new node and assign the policy to it
         # And attach it to the current node
         new_node = MCTSNode()
+        value = expand_node(new_node, board)
         current_node.next_states[chosen_action] = new_node
-        new_node.p = policy
 
     # 3. Back up new evaluation and visit count values.
     # Note: value will change sign for each player
@@ -154,6 +157,14 @@ def simulate(root_node: MCTSNode, board: chess.Board) -> None:
     return
 
 
+def expand_node(node: MCTSNode, board: chess.Board) -> float:
+    policy, value = evaluate_board(board)
+    legal_mask = get_legal_mask(board)
+    node.p = policy
+    node.legal_mask = legal_mask
+    return value
+
+
 def expand_terminal_node(node: MCTSNode, board: chess.Board) -> float:
     # value is always w.r.t. the current player in the board state, so
     # If a player gets checkmated then the value is always -1. The only
@@ -163,23 +174,18 @@ def expand_terminal_node(node: MCTSNode, board: chess.Board) -> float:
     return value
 
 
-def expand_node(node: MCTSNode, board: chess.Board) -> Tuple[np.ndarray, float]:
+def get_legal_mask(board: chess.Board) -> np.ndarray:
     # generate a legal moves mask
     legal_mask = np.zeros(NUM_ACTIONS)
     for move in board.legal_moves:
         legal_mask[move_to_action(move)] = 1
+    return legal_mask
 
+
+def evaluate_board(board: chess.Board) -> Tuple[np.ndarray, float]:
     # Note: the following neural net evaluation step will be slow. We will
     # need to implement a queue and batched processing for it later.
-
-    # apply the NN to the board
-    # policy: np.ndarray
-    # value: float
     policy, value = neural_net_eval(board)
-
-    # apply legal moves mask and normalize policy
-    policy *= legal_mask
-    policy /= policy.sum()
     return policy, value
 
 
@@ -187,7 +193,13 @@ def select_action(node: MCTSNode) -> int:
     """
     Returns the action with the highest UCT Score.
     """
-    s = node.q + C_PUCT * node.p * np.sqrt(1 + node.n.sum()) * 1 / (1 + node.n)
+    # calculate uct scores
+    s: np.ndarray
+    s = node.q + C_PUCT * node.p * np.sqrt(node.n.sum()) * 1 / (1 + node.n)
+    # apply legal moves mask before getting argmax
+    assert s.min() >= -1
+    s += 1  # making sure there are no negative elements
+    s *= node.legal_mask
     return np.argmax(s).item()
 
 
@@ -198,9 +210,4 @@ def neural_net_eval(board: chess.Board) -> Tuple[np.ndarray, float]:
     This mock implementation returns a uniform distribution and always 0 for the
     evaluation.
     """
-    policy = np.zeros(NUM_ACTIONS)
-    for move in board.legal_moves:
-        action = move_to_action(move)
-        policy[action] = 1  # be careful, no += because promotion
-    evaluation = 0
-    return policy, evaluation
+    return np.ones(NUM_ACTIONS), 0
