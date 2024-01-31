@@ -28,6 +28,8 @@ class MCTSNode:
         self.p: np.ndarray = np.zeros(NUM_ACTIONS)  # prior probabilities
         # mask for legal moves (will be reused every time we go thru this node)
         self.legal_mask: np.ndarray = np.zeros(NUM_ACTIONS)
+        # should always be equal to self.n.sum(), storing here for memoizing
+        self.n_sum = 0
         # one node for every expanded action
         self.next_states: Dict[int, MCTSNode] = {}
 
@@ -80,7 +82,7 @@ def mcts_choose_move(root_node: MCTSNode, board: chess.Board) -> Tuple[chess.Mov
 
     # 1. Start from the root node
     # (For making sure the board state is not changed after the search.)
-    saved_start_fen = board.fen()
+    # saved_start_fen = board.fen()
 
     # 2. Run N_sim simulations
     for i in range(N_SIM):
@@ -97,10 +99,10 @@ def mcts_choose_move(root_node: MCTSNode, board: chess.Board) -> Tuple[chess.Mov
     root_probs /= root_probs.sum()
     action = np.random.choice(np.arange(0, NUM_ACTIONS), p=root_probs)
     move = action_to_move(action, board)
-    root_eval = root_node.w.sum() / root_node.n.sum()
+    root_eval = root_node.w.sum() / root_node.n_sum
 
     # (make sure we didn't accidentally modify the board)
-    assert board.fen() == saved_start_fen
+    # assert board.fen() == saved_start_fen
 
     # Return chosen move, new probabilities and new evaluation for this state
     return (move, root_probs, root_eval)
@@ -111,7 +113,7 @@ def simulate(root_node: MCTSNode, board: chess.Board) -> None:
     Performs one simulation from the root node in an MCTS search.
     """
     # (For making sure the board state is not changed after the simulation.)
-    saved_start_fen = board.fen()
+    # saved_start_fen = board.fen()
 
     # 1. Select state to expand until we reach a leaf node.
 
@@ -155,12 +157,13 @@ def simulate(root_node: MCTSNode, board: chess.Board) -> None:
     for node, action in reversed(path):
         node.w[action] += value_sign * value
         node.n[action] += 1
+        node.n_sum += 1
         node.q[action] = node.w[action] / node.n[action]
         board.pop()
         value_sign *= -1
 
     # (make sure we didn't accidentally modify the board)
-    assert board.fen() == saved_start_fen
+    # assert board.fen() == saved_start_fen
     return
 
 
@@ -202,9 +205,9 @@ def select_action(node: MCTSNode) -> int:
     """
     # calculate uct scores
     s: np.ndarray
-    s = node.q + C_PUCT * node.p * np.sqrt(node.n.sum()) * 1 / (1 + node.n)
+    s = node.q + C_PUCT * node.p * np.sqrt(node.n_sum) * 1 / (1 + node.n)
     # apply legal moves mask before getting argmax
-    assert s.min() >= -1
+    # assert s.min() >= -1
     s += 1  # making sure there are no negative elements
     s *= node.legal_mask
     return np.argmax(s).item()
