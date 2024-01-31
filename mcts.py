@@ -14,6 +14,7 @@ C_PUCT = 1
 
 SAMPLING_TEMPERATURE = 4
 
+
 class MCTSNode:
     """
     One node in the Monte carlo search tree. Represents one specific board
@@ -26,7 +27,7 @@ class MCTSNode:
         self.n: np.ndarray = np.zeros(NUM_ACTIONS)  # number of visits
         self.p: np.ndarray = np.zeros(NUM_ACTIONS)  # prior probabilities
         # mask for legal moves (will be reused every time we go thru this node)
-        self.legal_mask = np.ndarray = np.zeros(NUM_ACTIONS)
+        self.legal_mask: np.ndarray = np.zeros(NUM_ACTIONS)
         # one node for every expanded action
         self.next_states: Dict[int, MCTSNode] = {}
 
@@ -50,8 +51,12 @@ def mcts_choose_move(root_node: MCTSNode, board: chess.Board) -> Tuple[chess.Mov
     should be same as before the search.
 
     It performs N_SIM simulations from the root node (board) where each
-    simulation predicts the probabilities of next action and the evaluation of
-    the current position.
+    simulation starts at the root node and selects a path through the tree based
+    on the probabilities and evaluations of moves/actions and ultimately reaches
+    any one leaf node. The leaf node is then evaluated by the neural network and
+    the new probabilities and evaluation is backed up and updated throughout the
+    path. Note that the probabilities and evaluations are stored for each _edge_
+    (i.e. move/action) in the tree, and not for the node itself.
 
     The evaluation of the current position is supposed to be between
     +1 (winning) or -1 (losing). It is from the perspective of the current
