@@ -43,7 +43,7 @@ class MCTSNode:
         self.terminal_states: Dict[int, float] = {}  # just for debugging
 
 
-def mcts_choose_move(root_node: MCTSNode, board: chess.Board, model: ChessModel) -> Tuple[chess.Move, torch.Tensor, torch.Tensor]:
+def mcts_choose_move(root_node: MCTSNode, board: chess.Board, model: ChessModel) -> Tuple[int, torch.Tensor, torch.Tensor]:
     """
     Performs Monte Carlo Tree Search over the action space, guided by the neural
     network.
@@ -107,14 +107,13 @@ def mcts_choose_move(root_node: MCTSNode, board: chess.Board, model: ChessModel)
     root_probs **= SAMPLING_TEMPERATURE
     root_probs /= root_probs.sum()
     action = int(torch.multinomial(root_probs, 1).item())
-    move = action_to_move(action, board)
     root_eval = root_node.w.sum() / root_node.n_sum
 
     # (make sure we didn't accidentally modify the board)
     # assert board.fen() == saved_start_fen
 
     # Return chosen move, new probabilities and new evaluation for this state
-    return (move, root_probs, root_eval)
+    return (action, root_probs, root_eval)
 
 
 def simulate(root_node: MCTSNode, board: chess.Board, model: ChessModel) -> None:
@@ -150,7 +149,7 @@ def simulate(root_node: MCTSNode, board: chess.Board, model: ChessModel) -> None
     # might be slow.
 
     # check current board state for termination
-    if board.is_game_over() or board.can_claim_fifty_moves():
+    if board.is_game_over() or board.is_fifty_moves():
         value = expand_terminal_node(current_node, board)
         if chosen_action not in current_node.terminal_states:
             current_node.terminal_states[chosen_action] = 0

@@ -33,8 +33,10 @@ def get_model() -> ChessModel:
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
     try:
         model = torch.load(open("saved_model.pth", "rb"))
+        print("Loaded model!")
     except FileNotFoundError:
         model = ChessModel()
+        print("Creating new model!")
     return model.to(device)
 
 
