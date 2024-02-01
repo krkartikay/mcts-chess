@@ -12,17 +12,22 @@ class ChessModel(nn.Module):
         self.layers = nn.Sequential(
             nn.Linear(7*8*8, N_HIDDEN),
             nn.ReLU(),
-            nn.Linear(N_HIDDEN, 64*64),
         )
+
+        self.value_head = nn.Linear(N_HIDDEN, 1)
+        self.prob_head = nn.Linear(N_HIDDEN, 64*64)
 
     def forward(self, x):
         # Flatten the tensor
         x = x.view(x.size(0), -1)
         # Apply layers
         x = self.layers(x)
+        logits = self.prob_head(x)
+        normalized_logits = F.log_softmax(logits, dim=1)
+        value = self.value_head(x)
+        normalized_value = F.tanh(value)
         # Outputs the logits normalised by log_softmax
-        x = F.log_softmax(x, dim=1)
-        return x
+        return (normalized_logits, normalized_value)
 
     def device(self):
         return next(self.parameters()).device

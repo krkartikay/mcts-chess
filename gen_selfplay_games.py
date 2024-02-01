@@ -12,7 +12,8 @@ from typing import List, Tuple
 
 from model import ChessModel, get_model
 
-mcts.N_SIM = 1000
+mcts.N_SIM = 2000
+mcts.SAMPLING_TEMPERATURE = 5
 
 
 def generate_games(num_games: int):
@@ -20,40 +21,42 @@ def generate_games(num_games: int):
     games = []
     print(f"Generating games.")
     for i in range(num_games):
+        print(f"=================== GAME {i} ===================.")
         game = generate_selfplay_game(model)
         games.append(game)
     print(f"Done! Generated {num_games} games!")
 
     print("Converting data to tensors.")
-    positions, valid_moves = convert_to_tensors(games)
+    positions, valid_moves, values = convert_to_tensors(games)
 
     print(f"Saving to output file. Shape:")
     print(f"positions : {positions.size()}")
     print(f"moves     : {valid_moves.size()}")
+    print(f"moves     : {values.size()}")
     print()
 
-    save_to_file(positions, valid_moves)
+    save_to_file(positions, valid_moves, values)
 
 
-def generate_selfplay_game(model: ChessModel) -> List[Tuple[chess.Board, List[chess.Move]]]:
+def generate_selfplay_game(model: ChessModel) -> List[Tuple[chess.Board, torch.Tensor, torch.Tensor]]:
     board = chess.Board()
-    history = []
+    history: List[Tuple[chess.Board, torch.Tensor, torch.Tensor]] = []
     root_node = MCTSNode()
     # Need to do this the first time
     _value = expand_node(root_node, board, model)
     while not (board.is_game_over() or board.is_fifty_moves()):
-        print(board)
         selected_action, move_probs, current_eval = mcts_choose_move(
             root_node, board, model)
         selected_move = action_to_move(selected_action, board)
-        print(selected_move, move_probs, current_eval)
-        top_actions = top_actions = torch.argsort(
-            move_probs)[-20:].cpu().numpy()[::-1]
-        for action in top_actions:
-            print(action_to_move(int(action), board),
-                  move_probs[action])
+        print(board.fen(), selected_move, current_eval)
+        # print(selected_move, move_probs, current_eval)
+        # top_actions = top_actions = torch.argsort(
+        #     move_probs)[-20:].cpu().numpy()[::-1]
+        # for action in top_actions:
+        #     print(action_to_move(int(action), board),
+        #           move_probs[action])
 
-        history.append((chess.Board(board.fen()), move_probs))
+        history.append((chess.Board(board.fen()), move_probs, current_eval))
         board.push(selected_move)
         if selected_action not in root_node.next_states:
             print("Terminal value: ",
@@ -64,24 +67,28 @@ def generate_selfplay_game(model: ChessModel) -> List[Tuple[chess.Board, List[ch
 
 
 def convert_to_tensors(
-        games: List[List[Tuple[chess.Board, List[chess.Move]]]]) -> Tuple[torch.Tensor, torch.Tensor]:
+        games: List[List[Tuple[chess.Board, torch.Tensor, torch.Tensor]]]) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
     all_positions = []
     all_valid_moves = []
+    all_values = []
     for game in games:
-        for position, valid_moves in game:
+        for position, move_probs, value in game:
             board_tensor = board_to_tensor(position)
-            moves_tensor = moves_to_tensor(valid_moves)
+            moves_tensor = move_probs
             all_positions.append(board_tensor)
             all_valid_moves.append(moves_tensor)
+            all_values.append(value)
     positions = torch.stack(all_positions)
     valid_moves = torch.stack(all_valid_moves)
-    return positions, valid_moves
+    values = torch.stack(all_values)
+    return positions, valid_moves, values
 
 
-def save_to_file(positions, moves, filename='games.pth'):
+def save_to_file(positions, moves, values, filename='games.pth'):
     with open(filename, 'wb') as datafile:
-        torch.save({"positions": positions, "moves": moves}, datafile)
+        torch.save({"positions": positions, "moves": moves,
+                   "values": values}, datafile)
 
 
 if __name__ == "__main__":
-    generate_games(100)
+    generate_games(1)

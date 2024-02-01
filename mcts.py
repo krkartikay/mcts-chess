@@ -230,4 +230,6 @@ def neural_net_eval(board: chess.Board, model: ChessModel) -> Tuple[torch.Tensor
     a policy and an evaluation (between +1 and -1) for the given position.
     """
     with torch.no_grad():
-        return softmax(model(board_to_tensor(board).unsqueeze(dim=0).to(device)), dim=1)[0], 0
+        logits, values = model(board_to_tensor(
+            board).unsqueeze(dim=0).to(device))
+        return softmax(logits[0], dim=0), values.item()
