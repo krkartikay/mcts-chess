@@ -37,7 +37,7 @@ def plot_board_moves(board: chess.Board, probs: torch.Tensor, k=100, size=400):
     arrows = []
     probs, actions = torch.topk(probs, k)
     for prob, action in zip(probs, actions):
-        arrow_weight = min(int(prob*ARROW_WEIGHT), 256)
+        arrow_weight = min(int(prob*ARROW_WEIGHT), 255)
         arrow_color = f"#009900{arrow_weight:02x}"
         move = action_to_move(action.item(), board)
         arrows.append(chess.svg.Arrow(move.from_square,

@@ -12,7 +12,7 @@ from typing import List, Tuple
 
 from model import ChessModel, get_model
 
-mcts.N_SIM = 2000
+mcts.N_SIM = 200
 mcts.SAMPLING_TEMPERATURE = 5
 
 
@@ -48,7 +48,7 @@ def generate_selfplay_game(model: ChessModel) -> List[Tuple[chess.Board, torch.T
         selected_action, move_probs, current_eval = mcts_choose_move(
             root_node, board, model)
         selected_move = action_to_move(selected_action, board)
-        print(board.fen(), selected_move, current_eval)
+        print(board, "\n", selected_move, current_eval)
         # print(selected_move, move_probs, current_eval)
         # top_actions = top_actions = torch.argsort(
         #     move_probs)[-20:].cpu().numpy()[::-1]
@@ -63,6 +63,7 @@ def generate_selfplay_game(model: ChessModel) -> List[Tuple[chess.Board, torch.T
                   root_node.terminal_states[selected_action])
         else:
             root_node = root_node.next_states[selected_action]
+    print(board.outcome())
     return history
 
 
