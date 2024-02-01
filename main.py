@@ -1,7 +1,7 @@
 import torch
 import train
 import torch.nn.functional as F
-from model import ChessModel
+from model import get_model
 from train import load_data, train_model
 from convert import tensor_to_board
 from visualization import plot_move_set, plot_board_moves
@@ -13,11 +13,7 @@ valid_moves = valid_moves.to(device)
 
 train.NUM_EPOCHS = 1
 
-# Create the neural net
-try:
-    chess_model = torch.load(open("saved_model.pth", "rb"))
-except FileNotFoundError:
-    chess_model = ChessModel().to(device)
+chess_model = get_model().to(device)
 
 IDX = 181
 

@@ -1,11 +1,13 @@
 # MCTS Algorithm
 # With no neural net (for now)
 
+import torch
 import chess
-import numpy as np
-
 from typing import List, Tuple, Dict
+from model import ChessModel
+from torch.nn.functional import softmax
 from action import move_to_action, action_to_move
+from convert import board_to_tensor
 
 NUM_ACTIONS = 64 * 64
 
@@ -13,6 +15,8 @@ N_SIM = 2000
 C_PUCT = 1
 
 SAMPLING_TEMPERATURE = 1
+
+device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 
 class MCTSNode:
@@ -22,19 +26,24 @@ class MCTSNode:
     """
 
     def __init__(self):
-        self.q: np.ndarray = np.zeros(NUM_ACTIONS)  # average evaluation
-        self.w: np.ndarray = np.zeros(NUM_ACTIONS)  # sum of q values
-        self.n: np.ndarray = np.zeros(NUM_ACTIONS)  # number of visits
-        self.p: np.ndarray = np.zeros(NUM_ACTIONS)  # prior probabilities
+        self.q: torch.Tensor = torch.zeros(
+            NUM_ACTIONS).to(device)  # average evaluation
+        self.w: torch.Tensor = torch.zeros(
+            NUM_ACTIONS).to(device)  # sum of q values
+        self.n: torch.Tensor = torch.zeros(
+            NUM_ACTIONS).to(device)  # number of visits
+        self.p: torch.Tensor = torch.zeros(
+            NUM_ACTIONS).to(device)  # prior probabilities
         # mask for legal moves (will be reused every time we go thru this node)
-        self.legal_mask: np.ndarray = np.zeros(NUM_ACTIONS)
+        self.legal_mask: torch.Tensor = torch.zeros(NUM_ACTIONS).to(device)
         # should always be equal to self.n.sum(), storing here for memoizing
         self.n_sum = 0
         # one node for every expanded action
         self.next_states: Dict[int, MCTSNode] = {}
+        self.terminal_states: Dict[int, float] = {}  # just for debugging
 
 
-def mcts_choose_move(root_node: MCTSNode, board: chess.Board) -> Tuple[chess.Move, np.ndarray, float]:
+def mcts_choose_move(root_node: MCTSNode, board: chess.Board, model: ChessModel) -> Tuple[chess.Move, torch.Tensor, torch.Tensor]:
     """
     Performs Monte Carlo Tree Search over the action space, guided by the neural
     network.
@@ -87,17 +96,17 @@ def mcts_choose_move(root_node: MCTSNode, board: chess.Board) -> Tuple[chess.Mov
     # 2. Run N_sim simulations
     for i in range(N_SIM):
         # print(f"Simulation {i}", end=" ")
-        simulate(root_node, board)
+        simulate(root_node, board, model)
         # print()
 
     # 3. Sample chosen move and report new probs and eval.
     # Sample move from root probabilities proportional to visit counts.
     # (todo: add temperature parameter, and reduce temperature to 0 towards the
     # end of the game.)
-    root_probs = root_node.n.copy()
+    root_probs = root_node.n.clone()
     root_probs **= SAMPLING_TEMPERATURE
     root_probs /= root_probs.sum()
-    action = np.random.choice(np.arange(0, NUM_ACTIONS), p=root_probs)
+    action = int(torch.multinomial(root_probs, 1).item())
     move = action_to_move(action, board)
     root_eval = root_node.w.sum() / root_node.n_sum
 
@@ -108,7 +117,7 @@ def mcts_choose_move(root_node: MCTSNode, board: chess.Board) -> Tuple[chess.Mov
     return (move, root_probs, root_eval)
 
 
-def simulate(root_node: MCTSNode, board: chess.Board) -> None:
+def simulate(root_node: MCTSNode, board: chess.Board, model: ChessModel) -> None:
     """
     Performs one simulation from the root node in an MCTS search.
     """
@@ -143,11 +152,14 @@ def simulate(root_node: MCTSNode, board: chess.Board) -> None:
     # check current board state for termination
     if board.is_game_over() or board.can_claim_fifty_moves():
         value = expand_terminal_node(current_node, board)
+        if chosen_action not in current_node.terminal_states:
+            current_node.terminal_states[chosen_action] = 0
+        current_node.terminal_states[chosen_action] += value
     else:
         # Create a new node and assign the policy to it
         # And attach it to the current node
         new_node = MCTSNode()
-        value = expand_node(new_node, board)
+        value = expand_node(new_node, board, model)
         current_node.next_states[chosen_action] = new_node
 
     # 3. Back up new evaluation and visit count values.
@@ -167,8 +179,8 @@ def simulate(root_node: MCTSNode, board: chess.Board) -> None:
     return
 
 
-def expand_node(node: MCTSNode, board: chess.Board) -> float:
-    policy, value = evaluate_board(board)
+def expand_node(node: MCTSNode, board: chess.Board, model: ChessModel) -> float:
+    policy, value = evaluate_board(board, model)
     legal_mask = get_legal_mask(board)
     node.p = policy
     node.legal_mask = legal_mask
@@ -184,18 +196,18 @@ def expand_terminal_node(node: MCTSNode, board: chess.Board) -> float:
     return value
 
 
-def get_legal_mask(board: chess.Board) -> np.ndarray:
+def get_legal_mask(board: chess.Board) -> torch.Tensor:
     # generate a legal moves mask
-    legal_mask = np.zeros(NUM_ACTIONS)
+    legal_mask = torch.zeros(NUM_ACTIONS).to(device)
     for move in board.legal_moves:
         legal_mask[move_to_action(move)] = 1
     return legal_mask
 
 
-def evaluate_board(board: chess.Board) -> Tuple[np.ndarray, float]:
+def evaluate_board(board: chess.Board, model: ChessModel) -> Tuple[torch.Tensor, float]:
     # Note: the following neural net evaluation step will be slow. We will
     # need to implement a queue and batched processing for it later.
-    policy, value = neural_net_eval(board)
+    policy, value = neural_net_eval(board, model)
     return policy, value
 
 
@@ -204,20 +216,19 @@ def select_action(node: MCTSNode) -> int:
     Returns the action with the highest UCT Score.
     """
     # calculate uct scores
-    s: np.ndarray
-    s = node.q + C_PUCT * node.p * np.sqrt(node.n_sum) * 1 / (1 + node.n)
+    s: torch.Tensor
+    s = node.q + C_PUCT * node.p * node.n_sum**0.5 * 1 / (1 + node.n)
     # apply legal moves mask before getting argmax
     # assert s.min() >= -1
     s += 1  # making sure there are no negative elements
     s *= node.legal_mask
-    return np.argmax(s).item()
+    return int(torch.argmax(s).item())
 
 
-def neural_net_eval(board: chess.Board) -> Tuple[np.ndarray, float]:
+def neural_net_eval(board: chess.Board, model: ChessModel) -> Tuple[torch.Tensor, float]:
     """
     This function is an interface to a neural net that returns two things,
     a policy and an evaluation (between +1 and -1) for the given position.
-    This mock implementation returns a uniform distribution and always 0 for the
-    evaluation.
     """
-    return np.ones(NUM_ACTIONS), 0
+    with torch.no_grad():
+        return softmax(model(board_to_tensor(board).unsqueeze(dim=0).to(device)), dim=1)[0], 0

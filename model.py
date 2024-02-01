@@ -28,6 +28,16 @@ class ChessModel(nn.Module):
         return next(self.parameters()).device
 
 
+def get_model() -> ChessModel:
+    # Create the neural net
+    device = 'cuda' if torch.cuda.is_available() else 'cpu'
+    try:
+        model = torch.load(open("saved_model.pth", "rb"))
+    except FileNotFoundError:
+        model = ChessModel()
+    return model.to(device)
+
+
 if __name__ == "__main__":
     model = ChessModel()
     print(model)
