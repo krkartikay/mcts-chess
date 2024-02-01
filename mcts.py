@@ -9,10 +9,10 @@ from action import move_to_action, action_to_move
 
 NUM_ACTIONS = 64 * 64
 
-N_SIM = 100
+N_SIM = 2000
 C_PUCT = 1
 
-SAMPLING_TEMPERATURE = 4
+SAMPLING_TEMPERATURE = 1
 
 
 class MCTSNode:
