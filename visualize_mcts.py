@@ -6,6 +6,7 @@ import mcts
 from action import action_to_move
 from mcts import MCTSNode, mcts_choose_move, expand_node
 from model import get_model
+from inference import start_inference_worker, neural_net_eval
 
 mcts.N_SIM = 1000
 MATE_IN_ONE = '1k6/6R1/1K6/8/8/8/8/8 w - - 2 2'
@@ -13,6 +14,7 @@ MATE_IN_TWO = 'k7/6R1/2K5/8/8/8/8/8 w - - 0 1'
 
 board = chess.Board(MATE_IN_TWO)
 model = get_model()
+start_inference_worker(model)
 
 # print(board)
 # print(board.fen())
@@ -21,8 +23,8 @@ for i in range(10):
     start_time = time.time()
 
     root_node = MCTSNode()
-    _value = expand_node(root_node, board, model)
-    move, new_probs, new_eval = mcts_choose_move(root_node, board, model)
+    _value = expand_node(root_node, board)
+    move, new_probs, new_eval = mcts_choose_move(root_node, board)
 
     end_time = time.time()
     print("TIME: ", end_time - start_time)

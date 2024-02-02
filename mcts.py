@@ -2,11 +2,13 @@
 # With no neural net (for now)
 
 from math import gamma
+from concurrent.futures import ThreadPoolExecutor, wait
 import torch
 import chess
 from typing import List, Tuple, Dict
-from model import ChessModel, neural_net_eval
+from model import ChessModel
 from action import move_to_action, action_to_move
+from inference import neural_net_eval
 
 NUM_ACTIONS = 64 * 64
 
@@ -41,7 +43,7 @@ class MCTSNode:
         self.terminal_states: Dict[int, float] = {}  # just for debugging
 
 
-def mcts_choose_move(root_node: MCTSNode, board: chess.Board, model: ChessModel) -> Tuple[int, torch.Tensor, torch.Tensor]:
+def mcts_choose_move(root_node: MCTSNode, board: chess.Board) -> Tuple[int, torch.Tensor, torch.Tensor]:
     """
     Performs Monte Carlo Tree Search over the action space, guided by the neural
     network.
@@ -96,11 +98,12 @@ def mcts_choose_move(root_node: MCTSNode, board: chess.Board, model: ChessModel)
     root_node.p = (1-DIR_FRAC) * (root_node.p) + \
         (DIR_FRAC)*gamma_dist.sample(root_node.p.shape)
     # 2. Run N_sim simulations
-    for i in range(N_SIM):
-        # print(f"Simulation {i}", end=" ")
-        simulate(root_node, board, model)
-        # latency_observer.plot_hist()
-        # print()
+    with ThreadPoolExecutor() as executor:
+        futures = [
+            executor.submit(simulate, root_node, board.copy(stack=False))
+            for i in range(N_SIM)
+        ]
+        wait(futures)
 
     # 3. Sample chosen move and report new probs and eval.
     # Sample move from root probabilities proportional to visit counts.
@@ -119,7 +122,7 @@ def mcts_choose_move(root_node: MCTSNode, board: chess.Board, model: ChessModel)
     return (action, root_probs, root_eval)
 
 
-def simulate(root_node: MCTSNode, board: chess.Board, model: ChessModel) -> None:
+def simulate(root_node: MCTSNode, board: chess.Board) -> None:
     """
     Performs one simulation from the root node in an MCTS search.
     """
@@ -161,7 +164,7 @@ def simulate(root_node: MCTSNode, board: chess.Board, model: ChessModel) -> None
         # Create a new node and assign the policy to it
         # And attach it to the current node
         new_node = MCTSNode()
-        value = expand_node(new_node, board, model)
+        value = expand_node(new_node, board)
         current_node.next_states[chosen_action] = new_node
 
     # 3. Back up new evaluation and visit count values.
@@ -181,8 +184,8 @@ def simulate(root_node: MCTSNode, board: chess.Board, model: ChessModel) -> None
     return
 
 
-def expand_node(node: MCTSNode, board: chess.Board, model: ChessModel) -> float:
-    policy, value = evaluate_board(board, model)
+def expand_node(node: MCTSNode, board: chess.Board) -> float:
+    policy, value = evaluate_board(board)
     legal_mask = get_legal_mask(board)
     node.p = policy
     node.legal_mask = legal_mask
@@ -206,10 +209,10 @@ def get_legal_mask(board: chess.Board) -> torch.Tensor:
     return legal_mask
 
 
-def evaluate_board(board: chess.Board, model: ChessModel) -> Tuple[torch.Tensor, float]:
+def evaluate_board(board: chess.Board) -> Tuple[torch.Tensor, float]:
     # Note: the following neural net evaluation step will be slow. We will
     # need to implement a queue and batched processing for it later.
-    policy, value = neural_net_eval(board, model)
+    policy, value = neural_net_eval(board)
     return policy, value
 
 

@@ -18,12 +18,11 @@ mcts.SAMPLING_TEMPERATURE = 1
 
 
 def generate_games(num_games: int):
-    model = get_model()
     games = []
     print(f"Generating games.")
     for i in range(num_games):
         print(f"=================== GAME {i} ===================.")
-        game = generate_selfplay_game(model)
+        game = generate_selfplay_game()
         games.append(game)
     print(f"Done! Generated {num_games} games!")
 
@@ -33,15 +32,15 @@ def generate_games(num_games: int):
     save_to_file(positions, valid_moves, values)
 
 
-def generate_selfplay_game(model: ChessModel) -> List[Tuple[chess.Board, torch.Tensor, torch.Tensor]]:
+def generate_selfplay_game() -> List[Tuple[chess.Board, torch.Tensor, torch.Tensor]]:
     board = chess.Board()
     history: List[Tuple[chess.Board, torch.Tensor, torch.Tensor]] = []
     root_node = MCTSNode()
     # Need to do this the first time
-    _value = expand_node(root_node, board, model)
+    _value = expand_node(root_node, board)
     while not (board.is_game_over() or board.is_fifty_moves()):
         selected_action, move_probs, current_eval = mcts_choose_move(
-            root_node, board, model)
+            root_node, board)
         selected_move = action_to_move(selected_action, board)
         print(board, "\n", selected_move, current_eval)
         # print(selected_move, move_probs, current_eval)
