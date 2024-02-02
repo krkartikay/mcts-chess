@@ -1,35 +1,36 @@
-import mcts
-from agent import MCTSAgent, RandomChessAgent
+from agent import NNetAgent, RandomChessAgent
 from play_agents import play_agent_vs_agent
 
 import sys
+import agent
 
-NUM_GAMES = 20
+NUM_GAMES = 100
 VERBOSE = False
-mcts.N_SIM = 200
-mcts.SAMPLING_TEMPERATURE = 10
+agent.TEMPERATURE = 1
 
 
 def main():
     total_wins = 0
     total_draws = 0
     total_losses = 0
+    nnet_agent = NNetAgent()
+    random_agent = RandomChessAgent()
     for i in range(NUM_GAMES):
+        nnet_agent.reset()
+        random_agent.reset()
         print(f"Game {i}", end="\t")
         sys.stdout.flush()
-        mcts_agent = MCTSAgent()
-        random_agent = RandomChessAgent()
         moves_played, mcts_win, draw, mcts_lose = play_agent_vs_agent(
-            mcts_agent, random_agent, verbose=VERBOSE)
+            nnet_agent, random_agent, verbose=VERBOSE)
         total_wins += mcts_win
         total_draws += draw
         total_losses += mcts_lose
-        print(f"Moves {moves_played:3d} | MCTS Win / Draw / Lose:"
+        print(f"Moves {moves_played:3d} | NNET Win / Draw / Lose:"
               f" {mcts_win:2d} {draw:2d} {mcts_lose:2d} | Total"
               f" {total_wins:3d} / {total_draws:3d} / {total_losses:3d}")
         sys.stdout.flush()
 
-    print(f"Total MCTS win / draw / lose "
+    print(f"Total NNET win / draw / lose "
           f"{total_wins:2d} / {total_draws:2d} / {total_losses:2d}")
 
 

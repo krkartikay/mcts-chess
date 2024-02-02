@@ -16,7 +16,7 @@ train.NUM_EPOCHS = 1
 
 chess_model = get_model().to(device)
 
-IDX = 25
+IDX = 24
 
 
 def main():

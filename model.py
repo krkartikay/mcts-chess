@@ -1,8 +1,14 @@
+import chess
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+from typing import Tuple
+from convert import board_to_tensor
+
 N_HIDDEN = 4096
+
+device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 
 class ChessModel(nn.Module):
@@ -43,6 +49,17 @@ def get_model() -> ChessModel:
         model = ChessModel()
         print("Creating new model!")
     return model.to(device)
+
+
+def neural_net_eval(board: chess.Board, model: ChessModel) -> Tuple[torch.Tensor, float]:
+    """
+    This function is an interface to a neural net that returns two things,
+    a policy and an evaluation (between +1 and -1) for the given position.
+    """
+    with torch.no_grad():
+        logits, values = model(board_to_tensor(
+            board).unsqueeze(dim=0).to(device))
+        return F.softmax(logits[0], dim=0), values.item()
 
 
 if __name__ == "__main__":

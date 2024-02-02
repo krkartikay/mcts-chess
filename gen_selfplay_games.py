@@ -92,4 +92,4 @@ def save_to_file(positions, moves, values, filename='games.pth'):
 
 
 if __name__ == "__main__":
-    generate_games(1)
+    generate_games(10)

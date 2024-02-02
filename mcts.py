@@ -4,10 +4,8 @@
 import torch
 import chess
 from typing import List, Tuple, Dict
-from model import ChessModel
-from torch.nn.functional import softmax
+from model import ChessModel, neural_net_eval
 from action import move_to_action, action_to_move
-from convert import board_to_tensor
 
 NUM_ACTIONS = 64 * 64
 
@@ -222,14 +220,3 @@ def select_action(node: MCTSNode) -> int:
     s += 1  # making sure there are no negative elements
     s *= node.legal_mask
     return int(torch.argmax(s).item())
-
-
-def neural_net_eval(board: chess.Board, model: ChessModel) -> Tuple[torch.Tensor, float]:
-    """
-    This function is an interface to a neural net that returns two things,
-    a policy and an evaluation (between +1 and -1) for the given position.
-    """
-    with torch.no_grad():
-        logits, values = model(board_to_tensor(
-            board).unsqueeze(dim=0).to(device))
-        return softmax(logits[0], dim=0), values.item()
