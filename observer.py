@@ -6,13 +6,15 @@ import pickle
 from collections.abc import Iterable
 from matplotlib import pyplot as plt
 from typing import List
+import numpy as np
+from collections import deque
 
 
 class Observer:
-    def __init__(self, name, path="", suffix="", labels=[]):
+    def __init__(self, name, path="", suffix="", labels=[], maxlen=2000):
         self.name = name
         self.labels = labels
-        self.observations = []
+        self.observations = deque(maxlen=maxlen)
         self.set_path(path, suffix)
 
     def clear(self):
@@ -50,6 +52,33 @@ class Observer:
         filename = (f"{self.fullname}.png")
         plt.figure()
         plt.plot(self.observations)
+        plt.ylim(ymin=0)
+        plt.legend(legend)
+        plt.savefig(filename)
+        plt.close()
+
+    def plot_hist(self, legend=None):
+        if legend is None:
+            legend = self.labels
+        filename = (f"{self.fullname}_hist.png")
+        plt.figure()
+        plt.hist(self.observations, bins=10)
+        plt.ylim(ymin=0)
+        plt.legend(legend)
+        plt.savefig(filename)
+        plt.close()
+
+    def plot_log_hist(self, legend=None):
+        if legend is None:
+            legend = self.labels
+        filename = (f"{self.fullname}_log_hist.png")
+        plt.figure()
+        # Use non-equal bin sizes, such that they look equal on log scale.
+        logbins = np.logspace(np.log10(min(self.observations)),
+                              np.log10(max(self.observations)),
+                              100)
+        plt.hist(self.observations, bins=logbins)
+        plt.xscale('log')
         plt.ylim(ymin=0)
         plt.legend(legend)
         plt.savefig(filename)
