@@ -214,9 +214,10 @@ def select_action(node: MCTSNode) -> int:
     """
     # calculate uct scores
     s: torch.Tensor
-    s = node.q + C_PUCT * node.p * node.n_sum**0.5 * 1 / (1 + node.n)
-    # apply legal moves mask before getting argmax
-    # assert s.min() >= -1
-    s += 1  # making sure there are no negative elements
-    s *= node.legal_mask
-    return int(torch.argmax(s).item())
+    with torch.no_grad():
+        s = node.q + C_PUCT * node.p * node.n_sum**0.5 * 1 / (1 + node.n)
+        # apply legal moves mask before getting argmax
+        # assert s.min() >= -1
+        s += 1  # making sure there are no negative elements
+        s *= node.legal_mask
+        return int(torch.argmax(s).item())
