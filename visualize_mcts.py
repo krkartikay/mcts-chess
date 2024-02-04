@@ -8,11 +8,11 @@ from mcts import MCTSNode, mcts_choose_move, expand_node
 from model import get_model
 from inference import start_inference_worker, neural_net_eval
 
-mcts.N_SIM = 1000
+mcts.N_SIM = 2000
 MATE_IN_ONE = '1k6/6R1/1K6/8/8/8/8/8 w - - 2 2'
 MATE_IN_TWO = 'k7/6R1/2K5/8/8/8/8/8 w - - 0 1'
 
-board = chess.Board(MATE_IN_TWO)
+board = chess.Board()
 model = get_model()
 start_inference_worker(model)
 

@@ -1,10 +1,11 @@
 # MCTS Algorithm
-# With no neural net (for now)
 
 from math import gamma
 from concurrent.futures import ThreadPoolExecutor, wait
+import time
 import torch
 import chess
+from concurrent.futures import ThreadPoolExecutor, wait
 from typing import List, Tuple, Dict
 from model import ChessModel
 from action import move_to_action, action_to_move
@@ -16,6 +17,7 @@ N_SIM = 2000
 C_PUCT = 1.75
 
 SAMPLING_TEMPERATURE = 1
+MAX_WORKERS = 12
 
 DIR_ALPHA = 0.3
 DIR_FRAC = 0.25
@@ -98,12 +100,14 @@ def mcts_choose_move(root_node: MCTSNode, board: chess.Board) -> Tuple[int, torc
     root_node.p = (1-DIR_FRAC) * (root_node.p) + \
         (DIR_FRAC)*gamma_dist.sample(root_node.p.shape)
     # 2. Run N_sim simulations
-    with ThreadPoolExecutor() as executor:
+    with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
         futures = [
             executor.submit(simulate, root_node, board.copy(stack=False))
             for i in range(N_SIM)
         ]
         wait(futures)
+    # for i in range(N_SIM):
+    #     simulate(root_node, board)
 
     # 3. Sample chosen move and report new probs and eval.
     # Sample move from root probabilities proportional to visit counts.
