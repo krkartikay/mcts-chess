@@ -50,24 +50,26 @@ def train_model(model: ChessModel, positions: torch.Tensor, valid_moves: torch.T
     average_test_loss = 0
     average_train_loss = 0
 
-    # Training mode
-    model.train()
-    total_train_loss = 0
-    for batch_num, (train_positions, train_valid_moves, train_values) in enumerate(train_dataloader):
-        sgd_optimizer.zero_grad()
+    for i in range(NUM_EPOCHS):
+        print(f"Epoch {i}")
+        # Training mode
+        model.train()
+        total_train_loss = 0
+        for batch_num, (train_positions, train_valid_moves, train_values) in enumerate(train_dataloader):
+            sgd_optimizer.zero_grad()
 
-        move_logits, value = model(train_positions)
-        valid_move_probs = train_valid_moves / \
-            train_valid_moves.sum(dim=1, keepdims=True)
-        loss = F.kl_div(move_logits, valid_move_probs,
-                        reduction='batchmean') + F.mse_loss(value, train_values.unsqueeze(dim=1))
+            move_logits, value = model(train_positions)
+            valid_move_probs = train_valid_moves / \
+                train_valid_moves.sum(dim=1, keepdims=True)
+            loss = F.kl_div(move_logits, valid_move_probs,
+                            reduction='batchmean') + F.mse_loss(value, train_values.unsqueeze(dim=1))
 
-        loss.backward()
-        sgd_optimizer.step()
+            loss.backward()
+            sgd_optimizer.step()
 
-        total_train_loss += loss.item()
-        if batch_num % 10 == 0:
-            print(f"{batch_num+1:3d}, Loss: {loss.item():.4f}")
+            total_train_loss += loss.item()
+            if batch_num % 10 == 0:
+                print(f"{batch_num+1:3d}, Loss: {loss.item():.4f}")
 
     # Test Evaluation
     model.eval()

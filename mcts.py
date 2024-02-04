@@ -1,6 +1,7 @@
 # MCTS Algorithm
 # With no neural net (for now)
 
+from math import gamma
 import torch
 import chess
 from typing import List, Tuple, Dict
@@ -10,9 +11,14 @@ from action import move_to_action, action_to_move
 NUM_ACTIONS = 64 * 64
 
 N_SIM = 2000
-C_PUCT = 1
+C_PUCT = 1.75
 
 SAMPLING_TEMPERATURE = 1
+
+DIR_ALPHA = 0.3
+DIR_FRAC = 0.25
+
+gamma_dist = torch.distributions.gamma.Gamma(DIR_ALPHA, 1)
 
 
 class MCTSNode:
@@ -84,7 +90,11 @@ def mcts_choose_move(root_node: MCTSNode, board: chess.Board, model: ChessModel)
     # 1. Start from the root node
     # (For making sure the board state is not changed after the search.)
     # saved_start_fen = board.fen()
-
+    # Add dirichlet noise to root node priors for exploration
+    root_node.p *= root_node.legal_mask
+    root_node.p /= root_node.p.sum()
+    root_node.p = (1-DIR_FRAC) * (root_node.p) + \
+        (DIR_FRAC)*gamma_dist.sample(root_node.p.shape)
     # 2. Run N_sim simulations
     for i in range(N_SIM):
         # print(f"Simulation {i}", end=" ")
