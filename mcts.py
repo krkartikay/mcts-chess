@@ -14,8 +14,6 @@ C_PUCT = 1
 
 SAMPLING_TEMPERATURE = 1
 
-device = 'cuda' if torch.cuda.is_available() else 'cpu'
-
 
 class MCTSNode:
     """
@@ -24,16 +22,12 @@ class MCTSNode:
     """
 
     def __init__(self):
-        self.q: torch.Tensor = torch.zeros(
-            NUM_ACTIONS).to(device)  # average evaluation
-        self.w: torch.Tensor = torch.zeros(
-            NUM_ACTIONS).to(device)  # sum of q values
-        self.n: torch.Tensor = torch.zeros(
-            NUM_ACTIONS).to(device)  # number of visits
-        self.p: torch.Tensor = torch.zeros(
-            NUM_ACTIONS).to(device)  # prior probabilities
+        self.q: torch.Tensor = torch.zeros(NUM_ACTIONS)  # average evaluation
+        self.w: torch.Tensor = torch.zeros(NUM_ACTIONS)  # sum of q values
+        self.n: torch.Tensor = torch.zeros(NUM_ACTIONS)  # number of visits
+        self.p: torch.Tensor = torch.zeros(NUM_ACTIONS)  # prior probabilities
         # mask for legal moves (will be reused every time we go thru this node)
-        self.legal_mask: torch.Tensor = torch.zeros(NUM_ACTIONS).to(device)
+        self.legal_mask: torch.Tensor = torch.zeros(NUM_ACTIONS)
         # should always be equal to self.n.sum(), storing here for memoizing
         self.n_sum = 0
         # one node for every expanded action
@@ -95,6 +89,7 @@ def mcts_choose_move(root_node: MCTSNode, board: chess.Board, model: ChessModel)
     for i in range(N_SIM):
         # print(f"Simulation {i}", end=" ")
         simulate(root_node, board, model)
+        # latency_observer.plot_hist()
         # print()
 
     # 3. Sample chosen move and report new probs and eval.
@@ -195,7 +190,7 @@ def expand_terminal_node(node: MCTSNode, board: chess.Board) -> float:
 
 def get_legal_mask(board: chess.Board) -> torch.Tensor:
     # generate a legal moves mask
-    legal_mask = torch.zeros(NUM_ACTIONS).to(device)
+    legal_mask = torch.zeros(NUM_ACTIONS)
     for move in board.legal_moves:
         legal_mask[move_to_action(move)] = 1
     return legal_mask
@@ -213,11 +208,9 @@ def select_action(node: MCTSNode) -> int:
     Returns the action with the highest UCT Score.
     """
     # calculate uct scores
-    s: torch.Tensor
-    with torch.no_grad():
-        s = node.q + C_PUCT * node.p * node.n_sum**0.5 * 1 / (1 + node.n)
-        # apply legal moves mask before getting argmax
-        # assert s.min() >= -1
-        s += 1  # making sure there are no negative elements
-        s *= node.legal_mask
-        return int(torch.argmax(s).item())
+    s = node.q + C_PUCT * node.p * node.n_sum**0.5 * 1 / (1 + node.n)
+    # apply legal moves mask before getting argmax
+    # assert s.min() >= -1
+    s += 1  # making sure there are no negative elements
+    s *= node.legal_mask
+    return int(torch.argmax(s).item())

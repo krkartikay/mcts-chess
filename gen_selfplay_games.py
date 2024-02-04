@@ -13,7 +13,7 @@ from typing import List, Tuple
 from model import ChessModel, get_model
 
 mcts.N_SIM = 200
-mcts.SAMPLING_TEMPERATURE = 5
+mcts.SAMPLING_TEMPERATURE = 1
 
 
 def generate_games(num_games: int):

@@ -1,3 +1,4 @@
+import time
 import chess
 import torch
 import torch.nn as nn
@@ -5,6 +6,7 @@ import torch.nn.functional as F
 
 from typing import Tuple
 from convert import board_to_tensor
+from observer import Observer
 
 N_HIDDEN = 4096
 
@@ -57,9 +59,12 @@ def neural_net_eval(board: chess.Board, model: ChessModel) -> Tuple[torch.Tensor
     a policy and an evaluation (between +1 and -1) for the given position.
     """
     with torch.no_grad():
-        logits, values = model(board_to_tensor(
-            board).unsqueeze(dim=0).to(device))
-        return F.softmax(logits[0], dim=0), values.item()
+        board_tensor = board_to_tensor(
+            board).unsqueeze(dim=0).to(device)
+        logits, values = model(board_tensor)
+        probs, value = F.softmax(logits[0], dim=0), values.item()
+        probs = probs.to('cpu')
+    return probs, value
 
 
 if __name__ == "__main__":

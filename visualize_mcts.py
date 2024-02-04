@@ -4,7 +4,7 @@ import time
 
 import mcts
 from action import action_to_move
-from mcts import MCTSNode, mcts_choose_move, expand_node, neural_net_eval
+from mcts import MCTSNode, mcts_choose_move, expand_node
 from model import get_model
 
 mcts.N_SIM = 1000
