@@ -34,10 +34,10 @@ class RandomChessAgent(ChessAgent):
 
 
 class MCTSAgent(ChessAgent):
-    def __init__(self):
+    def __init__(self, model):
         self.board = chess.Board()
         self.root_node = MCTSNode()
-        self.model = get_model()
+        self.model = model
         expand_node(self.root_node, self.board, self.model)
 
     def choose_move(self) -> chess.Move:

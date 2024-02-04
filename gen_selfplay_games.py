@@ -13,7 +13,7 @@ from typing import List, Tuple
 from model import ChessModel, get_model
 from training import load_data
 
-mcts.N_SIM = 100
+mcts.N_SIM = 1000
 mcts.SAMPLING_TEMPERATURE = 1
 
 

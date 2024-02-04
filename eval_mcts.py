@@ -1,23 +1,25 @@
 import mcts
 from agent import MCTSAgent, RandomChessAgent
+from model import get_model
 from play_agents import play_agent_vs_agent
 
 import sys
 
 NUM_GAMES = 20
 VERBOSE = False
-mcts.N_SIM = 200
-mcts.SAMPLING_TEMPERATURE = 10
+mcts.N_SIM = 100
+mcts.SAMPLING_TEMPERATURE = 5
 
 
 def main():
     total_wins = 0
     total_draws = 0
     total_losses = 0
+    model = get_model()
     for i in range(NUM_GAMES):
         print(f"Game {i}", end="\t")
         sys.stdout.flush()
-        mcts_agent = MCTSAgent()
+        mcts_agent = MCTSAgent(model)
         random_agent = RandomChessAgent()
         moves_played, mcts_win, draw, mcts_lose = play_agent_vs_agent(
             mcts_agent, random_agent, verbose=VERBOSE)

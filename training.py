@@ -49,12 +49,12 @@ def train_model(model: ChessModel, positions: torch.Tensor, valid_moves: torch.T
 
     average_test_loss = 0
     average_train_loss = 0
+    total_train_loss = 0
 
     for i in range(NUM_EPOCHS):
         print(f"Epoch {i}")
         # Training mode
         model.train()
-        total_train_loss = 0
         for batch_num, (train_positions, train_valid_moves, train_values) in enumerate(train_dataloader):
             sgd_optimizer.zero_grad()
 
