@@ -1,8 +1,8 @@
 import torch
-import train
+import training
 import torch.nn.functional as F
 from model import get_model
-from train import load_data, train_model
+from training import load_data, train_model
 from convert import tensor_to_board
 from visualization import plot_move_set, plot_board_moves
 
@@ -12,7 +12,7 @@ positions = positions.to(device)
 valid_moves = valid_moves.to(device)
 values = values.to(device)
 
-train.NUM_EPOCHS = 1
+training.NUM_EPOCHS = 1
 
 chess_model = get_model().to(device)
 

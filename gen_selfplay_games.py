@@ -11,7 +11,7 @@ from action import action_to_move
 from typing import List, Tuple
 
 from model import ChessModel, get_model
-from train import load_data
+from training import load_data
 
 mcts.N_SIM = 200
 mcts.SAMPLING_TEMPERATURE = 1
