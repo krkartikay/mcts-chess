@@ -16,7 +16,14 @@ def play_agent_vs_agent(agent: ChessAgent, other: ChessAgent, verbose=False):
         # print(f"{current_agent}'s move")
         move = current_agent.choose_move()
         tab = '\t...' if moves_played % 2 else ' '
-        board.push(move)
+        try:
+            board.push(move)
+        except AssertionError:
+            print()
+            print(board)
+            print(move)
+            print(current_agent)
+            print()
         if verbose:
             print(f"white {white} black {black}")
             print(f"{moves_played:3d}.{tab}{move}")

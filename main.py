@@ -16,13 +16,13 @@ train.NUM_EPOCHS = 1
 
 chess_model = get_model().to(device)
 
-IDX = 24
+IDX = 0
 
 
 def main():
     checkpoint(chess_model)
 
-    for i in range(10):
+    for i in range(20):
         result = train_model(chess_model, positions, valid_moves, values)
         checkpoint(chess_model)
         print(result)

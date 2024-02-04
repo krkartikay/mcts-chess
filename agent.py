@@ -63,6 +63,7 @@ class NNetAgent(ChessAgent):
 
     def choose_move(self) -> chess.Move:
         probs, value = neural_net_eval(self.board, self.model)
+        probs = probs.to(device)
         legal_mask = torch.zeros(64*64).to(device)
         for move in self.board.legal_moves:
             legal_mask[move_to_action(move)] = 1

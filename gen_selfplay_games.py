@@ -11,6 +11,7 @@ from action import action_to_move
 from typing import List, Tuple
 
 from model import ChessModel, get_model
+from train import load_data
 
 mcts.N_SIM = 200
 mcts.SAMPLING_TEMPERATURE = 1
@@ -28,12 +29,6 @@ def generate_games(num_games: int):
 
     print("Converting data to tensors.")
     positions, valid_moves, values = convert_to_tensors(games)
-
-    print(f"Saving to output file. Shape:")
-    print(f"positions : {positions.size()}")
-    print(f"moves     : {valid_moves.size()}")
-    print(f"moves     : {values.size()}")
-    print()
 
     save_to_file(positions, valid_moves, values)
 
@@ -85,11 +80,26 @@ def convert_to_tensors(
     return positions, valid_moves, values
 
 
-def save_to_file(positions, moves, values, filename='games.pth'):
+def save_to_file(positions, valid_moves, values, filename='games.pth'):
+    try:
+        positions_old, valid_moves_old, values_old = load_data(filename)
+    except FileNotFoundError:
+        positions_old = torch.tensor([])
+        valid_moves_old = torch.tensor([])
+        values_old = torch.tensor([])
     with open(filename, 'wb') as datafile:
-        torch.save({"positions": positions, "moves": moves,
-                   "values": values}, datafile)
+        positions_new = torch.cat((positions_old, positions))
+        valid_moves_new = torch.cat((valid_moves_old, valid_moves))
+        values_new = torch.cat((values_old, values))
+        torch.save({"positions": positions_new, "moves": valid_moves_new,
+                   "values": values_new}, datafile)
+    print("Appended to saved games file. New Shape:")
+    print(f"Saving to output file. Shape:")
+    print(f"positions : {positions_new.size()}")
+    print(f"moves     : {valid_moves_new.size()}")
+    print(f"moves     : {values_new.size()}")
+    print()
 
 
 if __name__ == "__main__":
-    generate_games(10)
+    generate_games(1)
