@@ -18,6 +18,7 @@ def start_inference_worker(model: ChessModel):
     """
     Starts the inference worker in a background thread.
     """
+    model.eval()
     worker_thread = threading.Thread(
         target=inference_worker, args=[model])
     worker_thread.daemon = True

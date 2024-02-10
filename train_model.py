@@ -1,3 +1,4 @@
+import random
 import chess
 import torch
 import training
@@ -7,18 +8,19 @@ from training import load_data, train_model
 from convert import board_to_tensor, tensor_to_board
 from visualization import plot_move_set, plot_board_moves
 
-IDX = 0
-
 
 def main():
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
     chess_model = get_model().to(device)
-    checkpoint(chess_model)
     try:
         positions, valid_moves, values = load_data()
         positions = positions.to(device)
         valid_moves = valid_moves.to(device)
         values = values.to(device)
+        position = positions[[random.randint(0, len(positions)-1)]]
+        # position = board_to_tensor(chess.Board()).unsqueeze(dim=0).to('cuda')
+        # position = positions[[54]]
+        checkpoint(chess_model, position)
         run_training(chess_model, positions, valid_moves, values)
     except FileNotFoundError:
         pass
@@ -26,15 +28,16 @@ def main():
 
 def run_training(chess_model, positions, moves, values):
     result = train_model(chess_model, positions, moves, values)
-    checkpoint(chess_model)
+    position = positions[[random.randint(0, len(positions)-1)]]
+    # position = board_to_tensor(chess.Board()).unsqueeze(dim=0).to('cuda')
+    # position = positions[[54]]
+    checkpoint(chess_model, position)
     print(result)
 
 
-def checkpoint(model):
+def checkpoint(model, position):
     torch.save(model, open("saved_model.pth", "wb"))
     with torch.no_grad():
-        # position = positions[[IDX]]
-        position = board_to_tensor(chess.Board()).unsqueeze(dim=0).to('cuda')
         move_logits, value = model(position)
         move_logits = move_logits[0]
         value = value[0]
