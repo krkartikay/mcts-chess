@@ -1,7 +1,7 @@
 # MCTS Algorithm
 
 from math import gamma
-from concurrent.futures import ThreadPoolExecutor, wait
+import threading
 import time
 import torch
 import chess
@@ -32,6 +32,7 @@ class MCTSNode:
     """
 
     def __init__(self):
+        # would this code be faster if I use dicts instead of arrays?
         self.q: torch.Tensor = torch.zeros(NUM_ACTIONS)  # average evaluation
         self.w: torch.Tensor = torch.zeros(NUM_ACTIONS)  # sum of q values
         self.n: torch.Tensor = torch.zeros(NUM_ACTIONS)  # number of visits
@@ -43,6 +44,11 @@ class MCTSNode:
         # one node for every expanded action
         self.next_states: Dict[int, MCTSNode] = {}
         self.terminal_states: Dict[int, float] = {}  # just for debugging
+        # for concurrency, to make sure two threads do not try to simulate same
+        # branch
+        # We will add -1 to virtual_q whenever we're simulating a branch
+        self.virtual_q: torch.Tensor = torch.zeros(NUM_ACTIONS)
+        self.select_lock = threading.Lock()
 
 
 def mcts_choose_move(root_node: MCTSNode, board: chess.Board) -> Tuple[int, torch.Tensor, torch.Tensor]:
@@ -140,7 +146,9 @@ def simulate(root_node: MCTSNode, board: chess.Board) -> None:
     chosen_action: int | None = None
     while True:
         # select node to expand
-        action = select_action(current_node)
+        with current_node.select_lock:
+            action = select_action(current_node)
+            current_node.virtual_q[action] = -1
         move = action_to_move(action, board)
         # print(f"{move}", end=" ")
         board.push(move)
@@ -176,6 +184,8 @@ def simulate(root_node: MCTSNode, board: chess.Board) -> None:
     # first time, value will be - as it is added to its parent node
     value_sign = -1
     for node, action in reversed(path):
+        node.virtual_q[action] = 0
+        move = action_to_move(action, board)
         node.w[action] += value_sign * value
         node.n[action] += 1
         node.n_sum += 1
@@ -225,7 +235,9 @@ def select_action(node: MCTSNode) -> int:
     Returns the action with the highest UCT Score.
     """
     # calculate uct scores
-    s = node.q + C_PUCT * node.p * node.n_sum**0.5 * 1 / (1 + node.n)
+    s = (node.q
+         + C_PUCT * node.p * (node.n_sum**0.5 / (1 + node.n))
+         + node.virtual_q)
     # apply legal moves mask before getting argmax
     # assert s.min() >= -1
     s += 1  # making sure there are no negative elements

@@ -8,7 +8,7 @@ from typing import Tuple
 from convert import board_to_tensor
 from observer import Observer
 
-N_HIDDEN = 4*4096
+N_HIDDEN = 4096
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 

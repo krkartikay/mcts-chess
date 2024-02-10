@@ -12,12 +12,14 @@ from typing import List, Tuple
 
 from model import ChessModel, get_model
 from training import load_data
+from inference import start_inference_worker
 
 mcts.N_SIM = 1000
 mcts.SAMPLING_TEMPERATURE = 1
 
 
 def generate_games(num_games: int):
+    start_inference_worker(get_model())
     games = []
     print(f"Generating games.")
     for i in range(num_games):

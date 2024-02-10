@@ -37,7 +37,6 @@ def inference_worker(model: ChessModel):
         batch_tensors = []
 
         while len(batch_tensors) < 64:
-            # print(";", len(batch_boards))
             try:
                 future, board = request_queue.get(
                     block=(len(batch_tensors) == 0))
