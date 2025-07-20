@@ -45,7 +45,7 @@ def get_model() -> ChessModel:
     # Create the neural net
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
     try:
-        model = torch.load(open("saved_model.pth", "rb"))
+        model = torch.load(open("saved_model.pth", "rb"), weights_only=False)
         print("Loaded model!")
     except FileNotFoundError:
         model = ChessModel()
