@@ -8,7 +8,7 @@ from typing import Tuple
 from convert import board_to_tensor
 from observer import Observer
 
-N_HIDDEN = 4*4096
+N_HIDDEN = 1024
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
@@ -17,23 +17,49 @@ class ChessModel(nn.Module):
     def __init__(self):
         super(ChessModel, self).__init__()
 
-        self.layers = nn.Sequential(
-            nn.Linear(7*8*8, N_HIDDEN),
-            nn.ReLU(),
+        # 8 convolutional layers with 128 channels each
+        self.conv_layers = nn.ModuleList([
+            nn.Conv2d(7, 128, kernel_size=3, padding=1),
+            nn.Conv2d(128, 128, kernel_size=3, padding=1),
+            nn.Conv2d(128, 128, kernel_size=3, padding=1),
+            nn.Conv2d(128, 128, kernel_size=3, padding=1),
+            nn.Conv2d(128, 128, kernel_size=3, padding=1),
+            nn.Conv2d(128, 128, kernel_size=3, padding=1),
+            nn.Conv2d(128, 128, kernel_size=3, padding=1),
+            nn.Conv2d(128, 128, kernel_size=3, padding=1),
+        ])
+        
+        # Batch normalization layers
+        self.bn_layers = nn.ModuleList([
+            nn.BatchNorm2d(128) for _ in range(8)
+        ])
+
+        # Final layers after conv blocks
+        self.value_head = nn.Sequential(
+            nn.AdaptiveAvgPool2d(1),
+            nn.Flatten(),
+            nn.Linear(128, 1)
+        )
+        
+        self.prob_head = nn.Sequential(
+            nn.AdaptiveAvgPool2d(1),
+            nn.Flatten(),
+            nn.Linear(128, 64*64)
         )
 
-        self.value_head = nn.Linear(N_HIDDEN, 1)
-        self.prob_head = nn.Linear(N_HIDDEN, 64*64)
-
     def forward(self, x):
-        # Flatten the tensor
-        x = x.view(x.size(0), -1)
-        # Apply layers
-        x = self.layers(x)
+        # Apply convolutional layers with batch norm and ReLU
+        for conv, bn in zip(self.conv_layers, self.bn_layers):
+            x = F.relu(bn(conv(x)))
+        
+        # Get policy logits
         logits = self.prob_head(x)
         normalized_logits = F.log_softmax(logits, dim=1)
+        
+        # Get value
         value = self.value_head(x)
         normalized_value = F.tanh(value)
+        
         # Outputs the logits normalised by log_softmax
         return (normalized_logits, normalized_value)
 

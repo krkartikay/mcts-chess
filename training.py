@@ -8,8 +8,8 @@ from model import ChessModel
 from observer import Observer
 
 BATCH_SIZE = 64
-LEARNING_RATE = 3e-4
-NUM_EPOCHS = 20
+LEARNING_RATE = 1e-3
+NUM_EPOCHS = 5
 
 loss_observer = Observer('loss', labels=['train_loss', 'test_loss'])
 
